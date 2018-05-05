@@ -27,7 +27,8 @@
      (with name
            (parse named-expr)
            (parse body))]
-    [(? symbol? name) (id name)]))
+    [(? symbol? name) (id name)]
+    [_ (error 'parse "syntax error")]))
 
 ;; subst : WAE symbol WAE -> WAE
 ;; substitutes second argument with third argument in first argument
