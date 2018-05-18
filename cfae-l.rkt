@@ -67,40 +67,42 @@
 ;; evaluates given CFAE/L expression to its value
 
 (define (interp expr env)
-  (type-case CFAE/L expr
-    [num (n) (numV n)]
-    [add (l r) (add-numbers (interp l env) (interp r env))]
-    [id (v) (lookup v env)]
-    [fun (param body) (closureV param body env)]
-    [app (fun arg)
-         (local [(define fun-val (strict (interp fun env)))
-                 (define arg-val (exprV arg env))]
-           (interp (closureV-body fun-val)
-                   (aSub (closureV-param fun-val)
-                         arg-val
-                         (closureV-env fun-val))))]))
+  (local [(define (interp-helper expr env)
+            (type-case CFAE/L expr
+              [num (n) (numV n)]
+              [add (l r) (add-numbers (interp-helper l env) (interp-helper r env))]
+              [id (v) (lookup v env)]
+              [fun (param body) (closureV param body env)]
+              [app (fun arg)
+                   (local [(define fun-val (strict (interp-helper fun env)))
+                           (define arg-val (exprV arg env))]
+                     (interp-helper (closureV-body fun-val)
+                                    (aSub (closureV-param fun-val)
+                                          arg-val
+                                          (closureV-env fun-val))))]))]
+    (strict (interp-helper expr env))))
 
-(test (strict (interp (parse '{with {x {+ 4 5}}
-                                {with {y {+ x x}}
-                                  {with {z y}
-                                    {with {x 4}
-                                      z}}}})
-                      (mtSub)))
+(test (interp (parse '{with {x {+ 4 5}}
+                        {with {y {+ x x}}
+                          {with {z y}
+                            {with {x 4}
+                              z}}}})
+              (mtSub))
       (numV 18))
-(test (strict (interp (parse '{with {x 3}
-                                x})
-                      (mtSub)))
+(test (interp (parse '{with {x 3}
+                        x})
+              (mtSub))
       (numV 3))
-(test (strict (interp (parse '{with {x 3}
-                                {+ x x}})
-                      (mtSub)))
+(test (interp (parse '{with {x 3}
+                        {+ x x}})
+              (mtSub))
       (numV 6))
-(test (strict (interp (parse '{with {double {fun {x} {+ x x}}}
-                                {+ {double 5}
-                                   {double 10}}})
-                      (mtSub)))
+(test (interp (parse '{with {double {fun {x} {+ x x}}}
+                        {+ {double 5}
+                          {double 10}}})
+              (mtSub))
       (numV 30))
-(test (strict (interp (parse '{with {f {undef x}}
-                                4})
-                      (mtSub)))
+(test (interp (parse '{with {f {undef x}}
+                        4})
+              (mtSub))
       (numV 4))
