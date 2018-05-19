@@ -14,7 +14,7 @@ interp (Num n) env = NumV n
 interp (Add lhs rhs) env = addNumbers (interp lhs env) (interp rhs env)
 interp (Id i) env = lookUp i env
 interp (Fun arg body) env =
-    FunV (\ val -> interp body (extend env arg val))
+    FunV (\ val -> val `seq` interp body (extend env arg val))
 interp (App funExpr argExpr) env =
     let FunV funVal = interp funExpr env
         argVal = interp argExpr env
@@ -29,5 +29,4 @@ lookUp var ((i,v):r)
     | otherwise = lookUp var r
 
 extend :: Env -> Identifier -> Value -> Env
-extend env i (NumV v) = (i, NumV v):env
-extend env i (FunV v) = (i, FunV v):env
+extend env i v = (i,v):env
