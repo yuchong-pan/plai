@@ -5,13 +5,15 @@
 ;;            | <id>
 ;;            | {fun {<id>} <CFAE/L>}
 ;;            | {<CFAE/L> <CFAE/L>}
+;;            | {if0 <CFAE/L> <CFAE/L> <CFAE/L>}
 
 (define-type CFAE/L
   [num (n number?)]
   [add (lhs CFAE/L?) (rhs CFAE/L?)]
   [id (name symbol?)]
   [fun (param symbol?) (body CFAE/L?)]
-  [app (fun CFAE/L?) (arg CFAE/L?)])
+  [app (fun CFAE/L?) (arg CFAE/L?)]
+  [if0 (pred CFAE/L?) (truth CFAE/L?) (falsity CFAE/L?)])
 
 (define-type CFAE/L-Value
   [numV (n number?)]
@@ -34,7 +36,15 @@
     [(? symbol? v) (id v)]
     [(list 'fun (list (? symbol? param)) body)
      (fun param (parse body))]
-    [(list fun arg) (app (parse fun) (parse arg))]))
+    [(list fun arg) (app (parse fun) (parse arg))]
+    [(list 'if0 pred truth falsity)
+     (if0 (parse pred) (parse truth) (parse falsity))]))
+
+;; num-zero? : CFAE/L-Value -> boolean
+;; returns true if given number is 0
+
+(define (num-zero? n)
+  (= 0 (numV-n (strict n))))
 
 ;; add-numbers : CFAE/L-Value CFAE/L-Value -> numV
 ;; adds two given numbers
@@ -79,7 +89,14 @@
                      (interp-helper (closureV-body fun-val)
                                     (aSub (closureV-param fun-val)
                                           arg-val
-                                          (closureV-env fun-val))))]))]
+                                          (closureV-env fun-val))))]
+              [if0 (pred truth falsity)
+                   (local [(define pred-val (interp-helper pred env))
+                           (define truth-val (exprV truth env))
+                           (define falsity-val (exprV falsity env))]
+                     (if (num-zero? pred-val)
+                         (strict truth-val)
+                         (strict falsity-val)))]))]
     (strict (interp-helper expr env))))
 
 (test (interp (parse '{with {x {+ 4 5}}
@@ -106,3 +123,9 @@
                         4})
               (mtSub))
       (numV 4))
+(test (interp (parse '{with {x 1}
+                        {if0 {+ x -1}
+                             0
+                             1}})
+              (mtSub))
+      (numV 0))
