@@ -70,7 +70,10 @@
 (define (strict val)
   (type-case CFAE/L-Value val
     [exprV (expr env)
-           (strict (interp expr env))]
+           (local [(define the-value (strict (interp expr env)))]
+             (begin
+               (printf "Forcing exprV to ~a~n" the-value)
+               the-value))]
     [else val]))
 
 ;; interp : CFAE/L Env -> CFAE/L-Value
