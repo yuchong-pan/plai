@@ -54,7 +54,7 @@
     [(list 'rec (list (? symbol? name) named-expr) body)
      (local [(define parsed-named-expr (parse named-expr))]
        (if (fun? parsed-named-expr)
-           (rec name (parse named-expr) (parse body))
+           (rec name parsed-named-expr (parse body))
            (error 'parse "named expression of rec not a procedure")))]))
 
 ;; num-op : op numV numV -> numV
