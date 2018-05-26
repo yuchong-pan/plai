@@ -20,6 +20,7 @@
   [rec (name symbol?) (named-expr RCFAE?) (body RCFAE?)])
 
 (define-type RCFAE-Value
+  [noV]
   [numV (n number?)]
   [closureV (param symbol?) (body RCFAE?) (env Env?)])
 
@@ -52,10 +53,7 @@
     [(list 'with (list (? symbol? name) named-expr) body)
      (app (fun name (parse body)) (parse named-expr))]
     [(list 'rec (list (? symbol? name) named-expr) body)
-     (local [(define parsed-named-expr (parse named-expr))]
-       (if (fun? parsed-named-expr)
-           (rec name parsed-named-expr (parse body))
-           (error 'parse "named expression of rec not a procedure")))]))
+     (rec name (parse named-expr) (parse body))]))
 
 ;; num-op : op numV numV -> numV
 ;; applies given operation on given two numbers
@@ -73,22 +71,27 @@
 ;; looks up given name in given environment
 
 (define (lookup name env)
-  (type-case Env env
-    [mtSub () (error 'lookup "free identifier")]
-    [aSub (key value next)
-          (if (symbol=? name key)
-              value
-              (lookup name next))]
-    [aRecSub (key boxed-value next)
-             (if (symbol=? name key)
-                 (unbox boxed-value)
-                 (lookup name next))]))
+  (local [(define (lookup-helper name env)
+            (type-case Env env
+              [mtSub () (error 'lookup "free identifier")]
+              [aSub (key value next)
+                    (if (symbol=? name key)
+                        value
+                        (lookup-helper name next))]
+              [aRecSub (key boxed-value next)
+                       (if (symbol=? name key)
+                           (unbox boxed-value)
+                           (lookup-helper name next))]))
+          (define val (lookup-helper name env))]
+    (if (noV? val)
+        (error "no value assigned")
+        val)))
 
 ;; cyclically-bind-and-interp : symbol fun env -> env
 ;; returns an environment that associates bound-id with a closure whose environment is the containing environment
 
 (define (cyclically-bind-and-interp bound-id named-expr env)
-  (local [(define value-holder (box (numV 1729)))
+  (local [(define value-holder (box (noV)))
           (define new-env (aRecSub bound-id value-holder env))
           (define named-expr-val (interp named-expr new-env))]
     (begin
